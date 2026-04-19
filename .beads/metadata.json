@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "esp8266_playground",
+  "project_id": "9b1e6dbf-8fa9-4b81-9117-26c291e028c1"
+}

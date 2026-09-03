@@ -16,3 +16,6 @@
 [submodule "lib/Adafruit-MCP23017"]
 	path = lib/Adafruit-MCP23017
 	url = https://github.com/adafruit/Adafruit-MCP23017-Arduino-Library.git
+[submodule "lib/RobTillaart_HX711"]
+	path = lib/RobTillaart_HX711
+	url = https://github.com/RobTillaart/HX711

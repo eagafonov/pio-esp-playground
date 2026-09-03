@@ -22,7 +22,12 @@ static uint8_t maxLedcResolution(uint32_t freq) {
 
 static uint32_t outputFreqHz = DEFAULT_FREQ_HZ;
 static uint8_t  squareResolution = 0;
-static uint32_t squareDuty50 = 0;
+
+// --- PWM mode (same LEDC hardware as square, adjustable duty) ---
+static constexpr uint8_t PWM_DUTY_MIN = 1;   // never a flat line
+static constexpr uint8_t PWM_DUTY_MAX = 99;
+static constexpr uint8_t PWM_DUTY_STEP = 1;
+static uint8_t pwmDutyPercent = 50;
 
 #ifndef BUILTIN_LED_PIN
 #error "BUILTIN_LED_PIN is not defined. Define it in platformio.ini."
@@ -37,6 +42,7 @@ enum class Mode {
     COSINE,
 #endif
     SQUARE,
+    PWM,
     PULSE,
 };
 
@@ -84,15 +90,18 @@ static bool applySquareFreq(uint32_t freq) {
             return false;
         }
     }
-    squareDuty50 = (1 << squareResolution) / 2;
-    Serial.printf("LEDC: %" PRIu32 " Hz, %" PRIu8 "-bit resolution, duty %" PRIu32 "/%" PRIu32 "\r\n",
-        freq, squareResolution, squareDuty50, (uint32_t)(1 << squareResolution));
+    Serial.printf("LEDC: %" PRIu32 " Hz, %" PRIu8 "-bit resolution\r\n", freq, squareResolution);
     return true;
+}
+
+static uint32_t currentLedcDuty() {
+    uint8_t percent = (activeMode == Mode::PWM) ? pwmDutyPercent : 50;
+    return (uint32_t)percent * (1 << squareResolution) / 100;
 }
 
 static void startSquare() {
     applySquareFreq(outputFreqHz);
-    ledcWrite(OUTPUT_PIN, squareDuty50);
+    ledcWrite(OUTPUT_PIN, currentLedcDuty());
 }
 
 static void stopSquare() {
@@ -105,11 +114,22 @@ static bool setSquareFreq(uint32_t freq) {
     if (!applySquareFreq(freq)) {
         // Revert to current frequency
         applySquareFreq(outputFreqHz);
-        ledcWrite(OUTPUT_PIN, squareDuty50);
+        ledcWrite(OUTPUT_PIN, currentLedcDuty());
         return false;
     }
-    ledcWrite(OUTPUT_PIN, squareDuty50);
+    ledcWrite(OUTPUT_PIN, currentLedcDuty());
     return true;
+}
+
+static void stepPwmDuty(int delta) {
+    int duty = (int)pwmDutyPercent + delta;
+    if (duty < (int)PWM_DUTY_MIN) duty = PWM_DUTY_MIN;
+    if (duty > (int)PWM_DUTY_MAX) duty = PWM_DUTY_MAX;
+    pwmDutyPercent = (uint8_t)duty;
+    if (generationActive && activeMode == Mode::PWM) {
+        ledcWrite(OUTPUT_PIN, currentLedcDuty());
+    }
+    Serial.printf("→ PWM duty: %u%%\r\n", pwmDutyPercent);
 }
 
 // --- Pulse mode (software-driven, push-pull) ---
@@ -156,7 +176,7 @@ static void triggerImpulse() {
 }
 
 static void setFreq(uint32_t freq) {
-    if (generationActive && activeMode == Mode::SQUARE) {
+    if (generationActive && (activeMode == Mode::SQUARE || activeMode == Mode::PWM)) {
         if (!setSquareFreq(freq)) {
             return;  // LEDC rejected freq, keep old value
         }
@@ -188,16 +208,18 @@ static void switchMode(Mode mode) {
 
     stopAll();
 
-    // Start new
+    // Update mode before starting: startSquare() computes duty from activeMode
+    activeMode = mode;
+
     switch (mode) {
 #if SOC_DAC_SUPPORTED
         case Mode::COSINE: startCosine(); break;
 #endif
         case Mode::SQUARE: startSquare(); break;
+        case Mode::PWM:    startSquare(); break;
         case Mode::PULSE:  startPulse(); break;
     }
 
-    activeMode = mode;
     generationActive = true;
     setLed(true);
 }
@@ -208,6 +230,8 @@ static void printHelp() {
     Serial.println("  c - Cosine wave (DAC, GPIO 25, fixed 1 kHz)");
 #endif
     Serial.println("  s - Square wave (LEDC, GPIO 4)");
+    Serial.println("  w - PWM (LEDC, GPIO 4, adjustable duty)");
+    Serial.println("  j/k - PWM duty -/+ (1% steps, 1-99%)");
     Serial.println("  p - Pulse (GPIO 4)");
     Serial.println("  i - Single impulse (GPIO 4)");
     Serial.println("  0-7 - Set frequency to 10^N Hz");
@@ -276,6 +300,19 @@ void loop() {
         case 'S':
             switchMode(Mode::SQUARE);
             Serial.println("→ Square wave (LEDC)");
+            break;
+        case 'w':
+        case 'W':
+            switchMode(Mode::PWM);
+            Serial.printf("→ PWM (LEDC), duty %u%%\r\n", pwmDutyPercent);
+            break;
+        case 'j':
+        case 'J':
+            stepPwmDuty(-PWM_DUTY_STEP);
+            break;
+        case 'k':
+        case 'K':
+            stepPwmDuty(+PWM_DUTY_STEP);
             break;
         case 'p':
         case 'P':

@@ -299,16 +299,16 @@ void runTest() {
       registeredMask |= changedBits;
 
       if (changedBits) {
-        Serial.printf("0x%04lX: 0x%04lX: 0x%04lX\r\n",
+        Serial.printf("0x%05lX: 0x%04lX: 0x%04lX\r\n",
           (unsigned long)i, (unsigned long)beforeClk, (unsigned long)afterClk);
       } else {
-        Serial.printf("0x%04lX: 0x%04lX\r\n",
+        Serial.printf("0x%05lX: 0x%04lX\r\n",
           (unsigned long)i, (unsigned long)beforeClk);
       }
     } else {
       delayMicroseconds(10);  // combinational settling time
       uint32_t outputs = readInputs();
-      Serial.printf("0x%04lX: 0x%04lX\r\n", (unsigned long)i, (unsigned long)outputs);
+      Serial.printf("0x%05lX: 0x%04lX\r\n", (unsigned long)i, (unsigned long)outputs);
     }
   }
 

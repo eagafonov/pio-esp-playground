@@ -366,8 +366,13 @@ void setup() {
   Serial.println();
   Serial.println("PAL Tester");
 
+  // Built-in LED polarity differs by board (see BUILTIN_LED_PIN_MODE in platformio.ini):
+  // - Wemos D1 Mini (ESP8266, OUTPUT): active-low — HIGH = off, LOW = on.
+  // - ESP32/S3 variants (OUTPUT_OPEN_DRAIN): LOW = on (pin sinks current),
+  //   HIGH = off (Hi-Z, LED held by external pull-up).
+  // In both cases digitalWrite(LOW) = LED on, digitalWrite(HIGH) = LED off.
   pinMode(BUILTIN_LED_PIN, BUILTIN_LED_PIN_MODE);
-  digitalWrite(BUILTIN_LED_PIN, HIGH);
+  digitalWrite(BUILTIN_LED_PIN, HIGH);  // LED off
 
   Wire.begin(HW_I2C_PIN_SDA, HW_I2C_PIN_SCL);
   Wire.setClock(400000);

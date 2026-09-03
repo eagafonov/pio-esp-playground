@@ -437,7 +437,7 @@ void loop() {
     if (c == 'r' || c == 'R') {
       testDone = false;
       runTest();
-    } else if (c == 'p' || c == 'P' || c == '\r' || c == '\n') {
+    } else if (c == 'p' || c == 'P') {
       printHeader();
     }
   }

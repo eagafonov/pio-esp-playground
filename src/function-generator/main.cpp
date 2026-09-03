@@ -109,7 +109,9 @@ static void stopSquare() {
     ledcDetach(OUTPUT_PIN);
 }
 
-static bool setSquareFreq(uint32_t freq) {
+// Applies a new frequency to the shared outputFreqHz using the LEDC
+// (square/PWM) hardware path. Returns false if LEDC rejected the value.
+static bool applyOutputFreq(uint32_t freq) {
     stopSquare();
     if (!applySquareFreq(freq)) {
         // Revert to current frequency
@@ -177,7 +179,7 @@ static void triggerImpulse() {
 
 static void setFreq(uint32_t freq) {
     if (generationActive && (activeMode == Mode::SQUARE || activeMode == Mode::PWM)) {
-        if (!setSquareFreq(freq)) {
+        if (!applyOutputFreq(freq)) {
             return;  // LEDC rejected freq, keep old value
         }
     }
